@@ -1,0 +1,176 @@
+---
+title: "Embedding a shiny app in blogdown"
+# author: "Brett Ory"
+thumbnailImagePosition: left
+thumbnailImage: https://res.cloudinary.com/teepublic/image/private/s--sBrI3e_I--/t_Preview/b_rgb:42332c,c_limit,f_jpg,h_630,q_90,w_630/v1497999616/production/designs/1682044_1.jpg
+coverImage: https://res.cloudinary.com/teepublic/image/private/s--sBrI3e_I--/t_Preview/b_rgb:42332c,c_limit,f_jpg,h_630,q_90,w_630/v1497999616/production/designs/1682044_1.jpg
+metaAlignment: center
+coverMeta: out
+date: 2018-02-01T21:13:14-05:00
+categories: ["Personal project"]
+tags: ["Kaggle", "shiny", "blogdown", "Rmarkdown"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(shiny)
+library(widgetframe)
+```
+
+This week I am trying to embed a shiny app on a static website using blogdown. In a couple of weeks I get to present a short introduction of blogdown at the first ever [R-ladies meetup](https://www.meetup.com/rladies-rotterdam/events/246776180/) in the Netherlands following a presentation on Rmarkdown and Shiny<sup><a href="#fn1" id="ref1">1</a></sup>. It will be a nice bonus if I can show how to embed shiny apps in blogdown! 
+
+## Kaggle tech survey
+
+For this demonstration I'm going to use data from the freely available [Kaggle survey](https://www.kaggle.com/kaggle/kaggle-survey-2017) on people working in tech. My main research question for today is descriptive: what is the breakdown by gender and country of tech workers?
+
+First we load the data
+```{r load data}
+# load data
+ks <- read.csv("data/multipleChoiceResponses.csv")
+```
+
+
+Then make the variable "gender" as a factor with only men and women (the Kaggle survey allowed for non-binary options)
+
+Gender
+```{r female}
+# gender
+ks$gender <- as.factor(ifelse(ks$GenderSelect=="Female","Female",ifelse(ks$GenderSelect=="Male","Male",NA)))
+ks <- ks[!is.na(ks$gender),]
+```
+
+Clean up the variable "Country"
+```{r country}
+# China listed under People 's Republic of China and Republic of China. 
+levels(ks$Country)[levels(ks$Country)=="People 's Republic of China"] <- "China"
+levels(ks$Country)[levels(ks$Country)=="Republic of China"] <- "China"
+# get rid of other and NA countries
+ks <- ks[ks$Country!="Other" & ks$Country!="" & !is.na(ks$Country),]
+ks$Country <- factor(ks$Country)
+
+
+```
+
+Prep data for shiny app
+```{r quick visual number of women in tech per country}
+kssmall <- ks[,c("Country","gender")]
+kssmall <- kssmall %>%
+  group_by(Country,gender) %>%
+  summarize(count=n())
+
+```
+
+
+Ok, now comes the hard part
+
+## The shiny app
+
+To embed a shiny app on a static site you need to have it published elsewhere online. This can be done for free on [shinyapps.io](https://www.shinyapps.io/). Once you create an account you just follow three very simple instructions on the website to deploy your app. Once deployed, you end up with a url, which you can then embed in an Rmarkdown file using one line of html.  
+
+
+
+I deployed an .Rmd file at (https://brettory.shinyapps.io/gender_tech_country/). To get R to recognize an .Rmd file as a shiny app, you need to include the line in the header `runtime: shiny`
+
+It will look something like this: 
+
+```
+---
+output: html_document
+runtime: shiny
+---
+```
+
+I didn't include the title, author, or date here because I want only the app to show up when I link to it. 
+
+Since the shiny app will be running online and not off of your personal computer, you need to upload the data as well. To do so, just make sure the data is in the same folder (or a subfolder within the main folder) as the folder where you store your app.Rmd file. It would also work to link to data that is alreay online. And be sure to use relative paths (ex: "data/KaggleSurvey.csv") rathter than absolute paths (ex: "User/Brett/Documents/App/data/KaggleSurvey.csv"). If your shiny app is running locally but doesn't run when you post it online, it's probably the paths, but I recommend the [Rstudio's help page](https://support.rstudio.com/hc/en-us/articles/231249288-Why-does-my-app-work-locally-but-not-on-my-Shiny-Server-) to troubleshoot other problems. 
+
+Because my data manipulations until now weren't very complicated, I just included the above code in my app.Rmd file with echo=FALSE heading each chunk so it would run but wouldn't produce any output. `echo=FALSE` is just one of the many useful commands that can be found on this [Rmarkdown cheat sheet](https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf).
+
+The resulting file can be found on GitHub, link at the end of this post. 
+
+Finally, I created the following shiny app:
+
+```{r gender by country, eval=FALSE}
+ui <- fluidPage(
+  selectInput("Country", label = "Country:",
+              choices = c("Argentina", "Australia", "Belarus", "Belgium","Brazil","Canada","Chile",
+                          "Colombia","Czech Republic","Denmark","Egypt","Finland","France","Germany",      
+                          "Greece","Hong Kong","Hungary","India","Indonesia","Iran","Ireland" ,      
+                          "Israel","Italy","Japan","Kenya","Malaysia","Mexico","Netherlands" ,  
+                          "New Zealand","Nigeria","Norway","Pakistan","China","Philippines","Poland"   ,     
+                          "Portugal","Romania","Russia","Singapore","South Africa" ,"South Korea","Spain"  ,       
+                          "Sweden","Switzerland","Taiwan","Turkey","Ukraine","United Kingdom", "United States",
+                          "Vietnam"), selected = "United States"),
+  mainPanel(
+
+      # Output: Tabset w/ plot, summary, and table ----
+      tabsetPanel(type = "tabs",
+                  tabPanel("Plot", plotOutput("barchart", width = "90%", height = "250px")),
+                  tabPanel("Table", tableOutput("table"))
+      )
+  )
+)
+server <- function(input, output) {
+  output$barchart <- renderPlot({
+      ggplot(subset(kssmall, Country==input$Country), aes(gender, count)) +
+      geom_bar(stat = "identity", aes(fill = gender), position = "dodge") +
+      xlab("Gender") + ylab("Count") +
+      ggtitle("Women in tech") + 
+      theme_bw()
+  })
+   output$table <- renderTable({
+    kssmall
+  })
+
+  options = list(height = 1000)  
+}
+
+
+shinyApp(ui = ui, server = server)
+```
+
+One problem I kept running into in making the app is that my barchart was too big for the panel the app is deployed in, so I was getting a scrollbar. Since it's just a simple barchart, I really wanted to be able to see relative number of women to men working in tech in one glance without having to scroll. You can adjust the size of the output within the panel, and you'll see I did this with `plotOutput("barchart", width = "90%", height = "250px")`. The width defaults to 100% and the height to 400px. After playing around with it a bit I settled on 90% width and 250 pixel height.  
+
+Once created and deployed, I simply embed it in my Rmarkdown file with a little html `<iframe src="myurl"> </iframe>` 
+
+Here you can also control the size of the frame with commands width and height, and additional commands like scrolling and frameborder to make it look a little nicer. The exact command I use to embed the shiny app is:
+
+```
+<iframe width="700" height="700" scrolling="no" frameborder="no"  src="https://brettory.shinyapps.io/gender_tech_country/"> </iframe>
+```
+
+
+Like this:
+
+<iframe width="700" height="400" scrolling="no" frameborder="no"  src="https://brettory.shinyapps.io/gender_tech_country/"> </iframe> It does take a while to load, and I'm not sure why, but I will leave that problem for another day! 
+
+Well, I successfully embedded a shiny app in a blogdown file, which was fun, but not very informative. In case you're curious which countries have the largest proporiton of women working in tech (I am!), a bar chart with all countries might be better. 
+```{r, warning=F}
+kssmall <- ks[,c("Country","gender")]
+kssmall$female <- as.numeric(with(ks, ifelse(ks$GenderSelect=="Female",1,ifelse(ks$GenderSelect=="Male",0,NA))))
+kssmall <- kssmall %>%
+  group_by(Country) %>%
+  summarize(Total=n(),Proportion_Female=mean(female, na.rm=T),Proportion_Male=1-mean(female, na.rm=T))
+Proportions <- c(kssmall$Proportion_Female,kssmall$Proportion_Male)
+Gender <- c(rep("Female", 50), rep("Male", 50))
+Country <- rep(c(levels(kssmall$Country)),2)
+df <- data.frame(Country,Proportions)
+
+p <- ggplot(df, aes(Country, Proportions))
+p +geom_bar(stat = "identity", aes(fill = Gender)) + coord_flip()
+```
+
+
+It looks like Ireland, Egypt, and Malaysia have the greatest number of women in tech while Japan and Denmark have the least. Ireland, Egypt, and Malaysia also have relatively few tech workers, though, so we may be capturing a bit of random variation. Shockingly, Denmark only has 4 female tech workers who participated in Kaggle's survey of a total of 76, and Japan only has 20 of 274. 
+
+
+However, that gross gender inequality may not be so bad, as I'll show next time. In other analyses I've conducted, it appears women report the best job satisfaction in countries where there are the least number of women in the tech sector. 
+
+
+This blog post can be found on GitHub.
+
+
+<sup id="fn1">Shiny was also the word the characters in Firefly used to mean cool. Hence the picture. It's shiny.  <a href="#ref1" title="Jump back to footnote 1 in the text.">↩</a></sup> 
