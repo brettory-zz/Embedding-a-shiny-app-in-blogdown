@@ -6,7 +6,7 @@ thumbnailImage: https://res.cloudinary.com/teepublic/image/private/s--sBrI3e_I--
 coverImage: https://res.cloudinary.com/teepublic/image/private/s--sBrI3e_I--/t_Preview/b_rgb:42332c,c_limit,f_jpg,h_630,q_90,w_630/v1497999616/production/designs/1682044_1.jpg
 metaAlignment: center
 coverMeta: out
-date: 2018-02-01T21:13:14-05:00
+date: 2018-02-02T21:13:14-05:00
 categories: ["Personal project"]
 tags: ["Kaggle", "shiny", "blogdown", "Rmarkdown"]
 ---
@@ -22,9 +22,13 @@ library(widgetframe)
 
 This week I am trying to embed a shiny app on a static website using blogdown. In a couple of weeks I get to present a short introduction of blogdown at the first ever [R-ladies meetup](https://www.meetup.com/rladies-rotterdam/events/246776180/) in the Netherlands following a presentation on Rmarkdown and Shiny<sup><a href="#fn1" id="ref1">1</a></sup>. It will be a nice bonus if I can show how to embed shiny apps in blogdown! 
 
+<br>
+
 ## Kaggle tech survey
 
-For this demonstration I'm going to use data from the freely available [Kaggle survey](https://www.kaggle.com/kaggle/kaggle-survey-2017) on people working in tech. My main research question for today is descriptive: what is the breakdown by gender and country of tech workers?
+For this demonstration I'm going to use data from the freely available [Kaggle survey](https://www.kaggle.com/kaggle/kaggle-survey-2017) on data science and machine learning. For those who aren't familiar with it, Kaggle is a platform for predictive modeling and data analytics competitions, and in the fall of 2017 they conducted an industry-wide survey of folks working in tech. 
+
+My main research question for today is descriptive: what is the breakdown by gender and country of tech workers?
 
 First we load the data
 ```{r load data}
@@ -66,15 +70,22 @@ kssmall <- kssmall %>%
 
 Ok, now comes the hard part
 
+<br>
+
 ## The shiny app
 
-To embed a shiny app on a static site you need to have it published elsewhere online. This can be done for free on [shinyapps.io](https://www.shinyapps.io/). Once you create an account you just follow three very simple instructions on the website to deploy your app. Once deployed, you end up with a url, which you can then embed in an Rmarkdown file using one line of html.  
+To embed a shiny app on a static site you need to have it published elsewhere online. This can be done for free on [shinyapps.io](https://www.shinyapps.io/). Once you create an account you just follow three very simple instructions on the website to deploy your app. Once deployed, you end up with a url, which you can then embed in an Rmarkdown file using one line of html. Since my focus today is not on how to write a shiny app, I'm going to go through these steps out of order, starting with how to put an app online.
+
+<br>
+
+### Deploying a shiny app
+
+I hope I'm not insulting anyone's intelligence here, but it wasn't immediate obvious to me so I will start by defining "deploy". When you deploy something, you basically are publishing it online. 
 
 
+Ok, now that that's out of the way, I can explain how to publish it online. After writing my app, I saved it as an Rmarkdown file (app.Rmd), which I deployed at (https://brettory.shinyapps.io/gender_tech_country/). To get R to recognize an .Rmd file as a shiny app, you need to include one extra line in the header: `runtime: shiny`
 
-I deployed an .Rmd file at (https://brettory.shinyapps.io/gender_tech_country/). To get R to recognize an .Rmd file as a shiny app, you need to include the line in the header `runtime: shiny`
-
-It will look something like this: 
+Your header will look something like this: 
 
 ```
 ---
@@ -87,9 +98,15 @@ I didn't include the title, author, or date here because I want only the app to 
 
 Since the shiny app will be running online and not off of your personal computer, you need to upload the data as well. To do so, just make sure the data is in the same folder (or a subfolder within the main folder) as the folder where you store your app.Rmd file. It would also work to link to data that is alreay online. And be sure to use relative paths (ex: "data/KaggleSurvey.csv") rathter than absolute paths (ex: "User/Brett/Documents/App/data/KaggleSurvey.csv"). If your shiny app is running locally but doesn't run when you post it online, it's probably the paths, but I recommend the [Rstudio's help page](https://support.rstudio.com/hc/en-us/articles/231249288-Why-does-my-app-work-locally-but-not-on-my-Shiny-Server-) to troubleshoot other problems. 
 
-Because my data manipulations until now weren't very complicated, I just included the above code in my app.Rmd file with echo=FALSE heading each chunk so it would run but wouldn't produce any output. `echo=FALSE` is just one of the many useful commands that can be found on this [Rmarkdown cheat sheet](https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf).
+<br>
 
-The resulting file can be found on GitHub, link at the end of this post. 
+### Creating the shiny app
+
+My goal was to create an app with two tabs. The first would let users select which country they are interested in, then show them a bar chart of the number of men and women working in tech in each country. In the second tab, I would have a simple tabulation of number of tech workers per gender and per country. 
+
+To create this app, I first needed to prep the data as shown above. Because my data manipulations of the Kaggle survey weren't very complicated, I just included the above code in my app.Rmd file with echo=FALSE heading each chunk so it would run but wouldn't produce any output. `echo=FALSE` is just one of the many useful commands that can be found on this [Rmarkdown cheat sheet](https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf).
+
+The resulting file can be found on [GitHub](https://github.com/brettory/shiny_app_women_in_tech). 
 
 Finally, I created the following shiny app:
 
@@ -134,18 +151,31 @@ shinyApp(ui = ui, server = server)
 
 One problem I kept running into in making the app is that my barchart was too big for the panel the app is deployed in, so I was getting a scrollbar. Since it's just a simple barchart, I really wanted to be able to see relative number of women to men working in tech in one glance without having to scroll. You can adjust the size of the output within the panel, and you'll see I did this with `plotOutput("barchart", width = "90%", height = "250px")`. The width defaults to 100% and the height to 400px. After playing around with it a bit I settled on 90% width and 250 pixel height.  
 
-Once created and deployed, I simply embed it in my Rmarkdown file with a little html `<iframe src="myurl"> </iframe>` 
+<br>
+
+### Embed the app in a blogdown post
+
+Once created and deployed, I simply embed my shiny app in my Rmarkdown file with a little html `<iframe src="myurl"> </iframe>` 
 
 Here you can also control the size of the frame with commands width and height, and additional commands like scrolling and frameborder to make it look a little nicer. The exact command I use to embed the shiny app is:
 
 ```
-<iframe width="700" height="700" scrolling="no" frameborder="no"  src="https://brettory.shinyapps.io/gender_tech_country/"> </iframe>
+<iframe width="700" height="400" scrolling="no" frameborder="no"  src="https://brettory.shinyapps.io/gender_tech_country/"> </iframe>
 ```
 
 
-Like this:
+The final product: 
 
-<iframe width="700" height="400" scrolling="no" frameborder="no"  src="https://brettory.shinyapps.io/gender_tech_country/"> </iframe> It does take a while to load, and I'm not sure why, but I will leave that problem for another day! 
+
+<br>
+
+<iframe width="700" height="400" scrolling="no" frameborder="no"  src="https://brettory.shinyapps.io/gender_tech_country/"> </iframe> 
+
+It does take a while to load, probably because I do data manipulation within the app file rather than in a separate file, but I will leave that problem for another day! 
+
+<br>
+
+## Which countries have the most women working in the tech sector?
 
 Well, I successfully embedded a shiny app in a blogdown file, which was fun, but not very informative. In case you're curious which countries have the largest proporiton of women working in tech (I am!), a bar chart with all countries might be better. 
 ```{r, warning=F}
@@ -164,13 +194,13 @@ p +geom_bar(stat = "identity", aes(fill = Gender)) + coord_flip()
 ```
 
 
-It looks like Ireland, Egypt, and Malaysia have the greatest number of women in tech while Japan and Denmark have the least. Ireland, Egypt, and Malaysia also have relatively few tech workers, though, so we may be capturing a bit of random variation. Shockingly, Denmark only has 4 female tech workers who participated in Kaggle's survey of a total of 76, and Japan only has 20 of 274. 
+It looks like Ireland, Egypt, and Malaysia have the greatest relative number of women in tech while Japan and Denmark have the smallest proportion of women. Ireland, Egypt, and Malaysia also have relatively few tech workers overall, though, so we may be capturing a bit of random variation. Shockingly, Denmark only has 4 female tech workers of a total of 76, and Japan only has 20 of 274. 
 
 
-However, that gross gender inequality may not be so bad, as I'll show next time. In other analyses I've conducted, it appears women report the best job satisfaction in countries where there are the least number of women in the tech sector. 
+However, that gross gender inequality in Denmark and Japan may not be so bad, as I'll show next time. In other analyses I've conducted, it appears women report the best job satisfaction in countries where there are the least number of women in the tech sector. 
 
 
-This blog post can be found on GitHub.
+This blog post can be found on [GitHub](https://github.com/brettory/Embedding-a-shiny-app-in-blogdown).
 
 
 <sup id="fn1">Shiny was also the word the characters in Firefly used to mean cool. Hence the picture. It's shiny.  <a href="#ref1" title="Jump back to footnote 1 in the text.">↩</a></sup> 
